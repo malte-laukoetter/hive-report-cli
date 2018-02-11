@@ -1,0 +1,18 @@
+{
+  "name": "hive-report-cmd",
+  "version": "1.0.0",
+  "description": "A command line tool to report on hivemc.com",
+  "main": "build/index.js",
+  "scripts": {
+    "start": "tsc && node build/main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Malte Laukötter",
+  "license": "MIT",
+  "dependencies": {
+    "hive-api": "^1.4.2",
+    "node-fetch": "^2.0.0",
+    "typescript": "^2.7.1",
+    "yargs": "^11.0.0"
+  }
+}

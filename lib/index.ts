@@ -8,9 +8,12 @@ import { promisify } from 'util'
 import * as Configstore from 'configstore';
 import * as Rx from 'rxjs/Rx';
 
-const conf = new Configstore('hive-report-cmd', {
-  hive_login_link_regex: /https\:\/\/secure.hivemc.com\/directlogin\/\?UUID\=.*\&token=.*/
-});
+const HIVE_LOGIN_LINK_REGEX = /https\:\/\/secure.hivemc.com\/directlogin\/\?UUID\=.*\&token=.*/;
+const HIVE_GAMELOG_URL_REGEX = /.*hivemc\.com\/\w*\/game\/\d*/;
+const HIVE_GAMELOG_CHAT_PLAYER_REGEX = /(?<=class="chat">(\s|\\n)<p><em>)[A-Za-z0-9_]{3,16}/g;
+const HIVE_CHATREPORT_PLAYER_REGEX = /(?<=Chat log of <a href="\/player\/)[a-zA-Z0-9_]{3,16}/
+
+const conf = new Configstore('hive-report-cmd', {});
 
 GameTypes.update();
 
@@ -30,7 +33,7 @@ const prompts = new Rx.Subject();
 
 const answers = {
   login: null,
-  players: [],
+  players: null,
   reason: null,
   category: null,
   evidence: null,
@@ -42,10 +45,38 @@ const answers = {
     switch (ans.name) {
       case Questions.LOGIN:
         answers.login = ans.answer;
-        nextQuestion(Questions.PLAYERS);
+        
+        if (process.argv[2]) {
+          const url = process.argv[2];
+
+          if(/(chat|log)/.test(url)){
+            // Chat Log
+            answers.evidence = url;
+            answers.category = 'chat';
+
+            answers.players = fetch(url).then(res => res.text()).then(res =>
+               Promise.all([new Player(res.match(HIVE_CHATREPORT_PLAYER_REGEX)[0]).info().then(i => i.uuid)])
+            )
+
+            nextQuestion(Questions.CATEGORY);
+          } else if (HIVE_GAMELOG_URL_REGEX.test(url)){
+            // Game log
+            answers.evidence = url;
+            answers.category = 'chat';
+            answers.players = fetch(url).then(res => res.text()).then(res => [... new Set(res.match(HIVE_GAMELOG_CHAT_PLAYER_REGEX))]);
+
+            nextQuestion(Questions.PLAYERS_LIST)
+          }
+        } else {
+          nextQuestion(Questions.PLAYERS);
+        }
+        break;
+      case Questions.PLAYERS_LIST:
+        answers.players = Promise.all(ans.answer.map(p => new Player(p).info().then(i => i.uuid)));
+        nextQuestion(Questions.CATEGORY);
         break;
       case Questions.PLAYERS:
-        answers.players = await Promise.all(ans.answer.split(/ /g).map(p => new Player(p).info().then(i => i.uuid)));
+        answers.players = Promise.all(ans.answer.split(/ /g).map(p => new Player(p).info().then(i => i.uuid)));
         nextQuestion(Questions.CATEGORY);
         break;
       case Questions.CATEGORY:
@@ -62,7 +93,7 @@ const answers = {
         break;
       case Questions.COMMENT:
         answers.comment = ans.answer;
-        prompts.complete();
+        prompts.complete()
         break;
     }
   },
@@ -70,7 +101,7 @@ const answers = {
   async _ => {
     const [token, uuid, cookiekey] = await getReportToken(answers.login);
 
-    await submitReport(token, uuid, cookiekey, answers.players, answers.category, answers.reason, answers.evidence, answers.comment);
+    await submitReport(token, uuid, cookiekey, await answers.players, await answers.category, await answers.reason, await answers.evidence, await answers.comment);
   }
 );
 
@@ -82,13 +113,14 @@ questionRegistry.set(Questions.LOGIN, {
   type: 'input',
   name: Questions.LOGIN,
   message: 'Login Link:',
-  validate: str => new RegExp(conf.get('hive_login_link_regex')).test(str)
+  validate: str => true//HIVE_LOGIN_LINK_REGEX.test(str)
 });
 
 questionRegistry.set(Questions.PLAYERS, {
   type: 'input',
-  name: 'players',
+  name: Questions.PLAYERS,
   message: 'Players:',
+  default: () => answers.players.join(" "),
   validate: async str => {
     if (str.includes('hivemc.com')) return true;
 
@@ -103,6 +135,14 @@ questionRegistry.set(Questions.PLAYERS, {
   }
 });
 
+questionRegistry.set(Questions.PLAYERS_LIST, {
+  type: 'checkbox',
+  name: Questions.PLAYERS_LIST,
+  message: 'Players:',
+  choices: () => answers.players,
+  validate: arr => arr.length > 0 ? true : 'You need to select atleast one player!'
+});
+
 questionRegistry.set(Questions.CATEGORY, {
   type: 'list',
   name: Questions.CATEGORY,
@@ -111,7 +151,8 @@ questionRegistry.set(Questions.CATEGORY, {
     'hacking',
     'chat',
     'behaviour'
-  ]
+  ],
+  default: () => answers.category
 });
 
 questionRegistry.set(Questions.REASON, {
@@ -128,23 +169,25 @@ questionRegistry.set(Questions.REASON, {
       case 'behaviour':
         return ['premabuse', 'glitch', 'team', 'rdm', 'ghost', 'shardtrolling', 'skin', 'harass', 'teamkill', 'karma', 'inappropriatedrawing', 'name'];
     }
-  }
+  },
+  default: () => answers.reason
 });
 
 questionRegistry.set(Questions.EVIDENCE, {
   type: 'input',
   name: Questions.EVIDENCE,
   message: 'Evidence:',
-  when: questions => !questions.players.includes('hivemc.com'),
   validate: (str) => {
     return str.length > 5;
-  }
+  },
+  default: () => answers.evidence
 });
 
 questionRegistry.set(Questions.COMMENT, {
   type: 'input',
   name: Questions.COMMENT,
-  message: 'Comment:'
+  message: 'Comment:',
+  default: () => answers.comment
 });
 
 async function getReportToken(loginLink) {
@@ -216,6 +259,7 @@ async function submitReport(token, uuid, cookiekey, uuids, category, reason, evi
       process.exit();
     } else {
       console.log(`Submission failed: (${res.status}) ${res.statusText}`);
+      console.error(res)
       process.exit();
     }
   }).catch(err => console.error(err));

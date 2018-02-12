@@ -4,16 +4,29 @@ import * as urlencode from 'urlencode';
 import { GameTypes, Player } from 'hive-api';
 import * as FormData from 'form-data';
 import * as request from 'request'
-import { promisify } from 'util'
+import { promisify, inspect } from 'util'
 import * as Configstore from 'configstore';
 import * as Rx from 'rxjs/Rx';
+import * as fs from 'fs';
+import * as readDirRecursiceCallback from 'recursive-readdir'
+import * as readline from 'readline';
+import { google } from 'googleapis';
+import { OAuth2Client } from 'google-auth-library';
+import { Throttle } from 'stream-throttle';
+
+const readdir = promisify(readDirRecursiceCallback);
+const fileStat = promisify(fs.stat)
+const readFile = promisify(fs.readFile)
 
 const HIVE_LOGIN_LINK_REGEX = /https\:\/\/secure.hivemc.com\/directlogin\/\?UUID\=.*\&token=.*/;
 const HIVE_GAMELOG_URL_REGEX = /.*hivemc\.com\/\w*\/game\/\d*/;
 const HIVE_GAMELOG_CHAT_PLAYER_REGEX = /(?<=class="chat">(\s|\\n)<p><em>)[A-Za-z0-9_]{3,16}/g;
 const HIVE_CHATREPORT_PLAYER_REGEX = /(?<=Chat log of <a href="\/player\/)[a-zA-Z0-9_]{3,16}/
 
-const conf = new Configstore('hive-report-cmd', {});
+const conf = new Configstore('hive-report-cmd', {
+  'video_dir': 'C:\\Users\\Malte\\Videos\\Overwolf\\Replay HUD\\Minecraft',
+  'max_upload_speed': 250000
+});
 
 GameTypes.update();
 
@@ -24,6 +37,7 @@ enum Questions {
   CATEGORY = 'category',
   REASON = 'reason',
   EVIDENCE = 'evidence',
+  EVIDENCE_VIDEO = 'evidence_video',
   COMMENT = 'comment'
 };
 
@@ -37,7 +51,8 @@ const answers = {
   reason: null,
   category: null,
   evidence: null,
-  comment: null
+  comment: null,
+  videoUpload: false
 };
 
 (inquirer.prompt((prompts as any)) as any).ui.process.subscribe(
@@ -85,7 +100,22 @@ const answers = {
         break;
       case Questions.REASON:
         answers.reason = ans.answer;
-        nextQuestion(Questions.EVIDENCE);
+        if (answers.category === 'hacking'){
+          nextQuestion(Questions.EVIDENCE_VIDEO);
+        }else{
+          nextQuestion(Questions.EVIDENCE);
+        }
+        break;
+      case Questions.EVIDENCE_VIDEO:
+        if (ans.answer === 'write your own'){
+          nextQuestion(Questions.EVIDENCE);
+        } else {
+          // todo upload video
+          answers.videoUpload = true;
+          answers.evidence = uploadFile(ans.answer).then(data => `https://www.youtube.com/watch?v=${data.id}`);
+
+          nextQuestion(Questions.COMMENT);
+        }
         break;
       case Questions.EVIDENCE:
         answers.evidence = ans.answer;
@@ -100,6 +130,10 @@ const answers = {
   err => console.error(err),
   async _ => {
     const [token, uuid, cookiekey] = await getReportToken(answers.login);
+
+    if(answers.videoUpload){
+      console.log(`Uploaded Video to ${await answers.evidence}`);
+    }
 
     await submitReport(token, uuid, cookiekey, await answers.players, await answers.category, await answers.reason, await answers.evidence, await answers.comment);
   }
@@ -120,7 +154,7 @@ questionRegistry.set(Questions.PLAYERS, {
   type: 'input',
   name: Questions.PLAYERS,
   message: 'Players:',
-  default: () => answers.players.join(" "),
+  default: () => answers.players ? answers.players.join(" ") : null,
   validate: async str => {
     if (str.includes('hivemc.com')) return true;
 
@@ -181,6 +215,24 @@ questionRegistry.set(Questions.EVIDENCE, {
     return str.length > 5;
   },
   default: () => answers.evidence
+});
+
+questionRegistry.set(Questions.EVIDENCE_VIDEO, {
+  type: 'list',
+  name: Questions.EVIDENCE_VIDEO,
+  message: 'Evidence:',
+  choices: () => readdir(conf.get('video_dir'))
+    // we only want mp4 files
+    .then(res => res.filter(a => a.endsWith('.mp4')))
+    // get the time the file was last modified
+    .then(a => Promise.all(a.map(async file => [file, await fileStat(file).then(a => a.mtimeMs)])))
+    // sort by this time
+    .then(a => a.sort(([_, t1], [__, t2]) => t2 - t1))
+    // get the 10 newest files
+    .then(a => a.slice(0, 10))
+    // change back to only the file name
+    .then(a => a.map(([f, _]) => f))
+    .then(a => a.concat(['write your own']))
 });
 
 questionRegistry.set(Questions.COMMENT, {
@@ -263,6 +315,87 @@ async function submitReport(token, uuid, cookiekey, uuids, category, reason, evi
       process.exit();
     }
   }).catch(err => console.error(err));
+}
+
+function uploadFile(filePath) {
+  return readFile('client_secret.json').then(async content => {
+    const auth = await authorize(JSON.parse(content.toString()));
+
+    return videosInsert(auth, filePath);
+  });
+}
+
+function authorize(credentials) {
+  const oauth2Client = new OAuth2Client(
+    credentials.installed.client_id,
+    credentials.installed.client_secret,
+    credentials.installed.redirect_uris[0]
+  );
+
+  // Check if we have previously stored a token.
+  if (conf.has("oauth_google")){
+    oauth2Client.credentials = conf.get("oauth_google");
+    return oauth2Client;
+  }else{
+    return getNewToken(oauth2Client);
+  }
+}
+
+function getNewToken(oauth2Client) {
+  const authUrl = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: ['https://www.googleapis.com/auth/youtube.force-ssl']
+  });
+
+  console.log('Authorize this app by visiting this url: ', authUrl);
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  return new Promise(resolve => {
+    rl.question('Enter the code from that page here: ', code => {
+      rl.close();
+
+      resolve(oauth2Client.getToken(code).then(({ tokens }) => {
+        oauth2Client.credentials = tokens;
+
+        conf.set("oauth_google", tokens);
+
+        resolve(oauth2Client);
+      }).catch(err => console.log('Error while trying to retrieve access token', err)));
+    });
+  });
+}
+
+function videosInsert(auth, videoFileName) {
+  const service = google.youtube({ version: 'v3', auth: auth });
+
+  return promisify(service.videos.insert)({
+    notifySubscribers: false,
+    resource: {
+      name: videoFileName,
+      mimeType: 'video/*',
+      snippet: {
+        title: videoFileName.split(/(\/|\\)/g).reduce((_, a) => a, "").split('.')[0],
+      },
+      status: {
+        privacyStatus: 'unlisted'
+      }
+    },
+    media: {
+      mimeType: 'video/*',
+      body: fs.createReadStream(videoFileName).pipe(new Throttle({ rate: conf.get('max_upload_speed') }) as any) // read streams are awesome!
+    },
+    part: "id,snippet,status"
+  }).then(data => {
+    return data.data;
+  }).catch(err => {
+    console.log("if the error is maxBodyLength -> edit node_modules/follow-redirects/index.js line 226 to something bigger")
+    
+    return err;
+  });
 }
 
 prompts.next(questionRegistry.get(Questions.LOGIN));

@@ -13,6 +13,7 @@ import * as readline from 'readline';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { Throttle } from 'stream-throttle';
+import * as commander from 'commander';
 
 const readdir = promisify(readDirRecursiceCallback);
 const fileStat = promisify(fs.stat)
@@ -23,10 +24,18 @@ const HIVE_GAMELOG_URL_REGEX = /.*hivemc\.com\/\w*\/game\/\d*/;
 const HIVE_GAMELOG_CHAT_PLAYER_REGEX = /(?<=class="chat">(\s|\\n)<p><em>)[A-Za-z0-9_]{3,16}/g;
 const HIVE_CHATREPORT_PLAYER_REGEX = /(?<=Chat log of <a href="\/player\/)[a-zA-Z0-9_]{3,16}/
 
-const conf = new Configstore('hive-report-cmd', {
-  'video_dir': 'C:\\Users\\Malte\\Videos\\Overwolf\\Replay HUD\\Minecraft',
-  'max_upload_speed': 250000
-});
+const conf = new Configstore('hive-report-cmd');
+
+commander
+  .usage('[options] [chatreport or gamelog]')
+  .option('--max-upload-speed <n>', 'Sets the maximum speed for Youtube uploads in bytes/s', parseInt)
+  .option('--video-dir <str>', 'Sets the directory to search for videos for hacking reports')
+  .parse(process.argv);
+  
+if (commander.maxUploadSpeed) conf.set('max_upload_speed', commander.maxUploadSpeed);
+if (!conf.has('max_upload_speed')) conf.set('max_upload_speed', 250000);
+
+if (commander.videoDir) conf.set('video_dir', commander.videoDir);
 
 GameTypes.update();
 
@@ -61,8 +70,8 @@ const answers = {
       case Questions.LOGIN:
         answers.login = ans.answer;
         
-        if (process.argv[2]) {
-          const url = process.argv[2];
+        if (commander.args[0]) {
+          const url = commander.args[0];
 
           if(/(chat|log)/.test(url)){
             // Chat Log
@@ -100,7 +109,7 @@ const answers = {
         break;
       case Questions.REASON:
         answers.reason = ans.answer;
-        if (answers.category === 'hacking'){
+        if (answers.category === 'hacking' && conf.has('video_dir')){
           nextQuestion(Questions.EVIDENCE_VIDEO);
         }else{
           nextQuestion(Questions.EVIDENCE);
@@ -112,9 +121,7 @@ const answers = {
         } else {
           // todo upload video
           answers.videoUpload = true;
-          answers.evidence = uploadFile(ans.answer).then(data => `https://www.youtube.com/watch?v=${data.id}`);
-
-          nextQuestion(Questions.COMMENT);
+          answers.evidence = uploadFile(ans.answer, () => nextQuestion(Questions.COMMENT)).then(data => `https://www.youtube.com/watch?v=${data.id}`);
         }
         break;
       case Questions.EVIDENCE:
@@ -317,9 +324,11 @@ async function submitReport(token, uuid, cookiekey, uuids, category, reason, evi
   }).catch(err => console.error(err));
 }
 
-function uploadFile(filePath) {
+function uploadFile(filePath, afterAuthCallback) {
   return readFile('client_secret.json').then(async content => {
     const auth = await authorize(JSON.parse(content.toString()));
+
+    afterAuthCallback();
 
     return videosInsert(auth, filePath);
   });
@@ -347,7 +356,7 @@ function getNewToken(oauth2Client) {
     scope: ['https://www.googleapis.com/auth/youtube.force-ssl']
   });
 
-  console.log('Authorize this app by visiting this url: ', authUrl);
+  console.log('Authorize this app by visiting this url:', authUrl);
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -386,14 +395,14 @@ function videosInsert(auth, videoFileName) {
     },
     media: {
       mimeType: 'video/*',
-      body: fs.createReadStream(videoFileName).pipe(new Throttle({ rate: conf.get('max_upload_speed') }) as any) // read streams are awesome!
+      body: fs.createReadStream(videoFileName).pipe(new Throttle({ rate: conf.get('max_upload_speed') }) as any)
     },
     part: "id,snippet,status"
   }).then(data => {
     return data.data;
   }).catch(err => {
     console.log("if the error is maxBodyLength -> edit node_modules/follow-redirects/index.js line 226 to something bigger")
-    
+
     return err;
   });
 }

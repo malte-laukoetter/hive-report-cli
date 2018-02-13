@@ -64,14 +64,11 @@ const answers = {
   videoUpload: false
 };
 
-(inquirer.prompt((prompts as any)) as any).ui.process.subscribe(
+const prompt = (inquirer.prompt((prompts as any)) as any);
+
+prompt.ui.process.subscribe(
   async ans => {
     switch (ans.name) {
-      case Questions.LOGIN:
-        answers.login = ans.answer;
-        
-        
-        break;
       case Questions.PLAYERS_LIST:
         answers.players = Promise.all(ans.answer.map(p => new Player(p).info().then(i => i.uuid)));
         nextQuestion(Questions.CATEGORY);
@@ -96,7 +93,6 @@ const answers = {
         if (ans.answer === 'write your own'){
           nextQuestion(Questions.EVIDENCE);
         } else {
-          // todo upload video
           answers.videoUpload = true;
           answers.evidence = uploadFile(ans.answer, () => nextQuestion(Questions.COMMENT)).then(data => `https://www.youtube.com/watch?v=${data.id}`);
         }
@@ -113,6 +109,9 @@ const answers = {
   },
   err => console.error(err),
   async _ => {
+    // close the prompt for real so we can create a new one
+    prompt.ui.close();
+
     const [token, uuid, cookiekey] = await getReportToken();
     
     if(answers.videoUpload){
@@ -131,7 +130,7 @@ questionRegistry.set(Questions.LOGIN, {
   type: 'input',
   name: Questions.LOGIN,
   message: 'Login Link:',
-  validate: str => true//HIVE_LOGIN_LINK_REGEX.test(str)
+  validate: str => HIVE_LOGIN_LINK_REGEX.test(str)
 });
 
 questionRegistry.set(Questions.PLAYERS, {
@@ -266,21 +265,32 @@ async function getReportToken() {
 async function loginToHive(): Promise<string[]>{
   const promptsLogin = new Rx.Subject();
 
-  
   let returnValue: Promise<string[]> = new Promise((resolve, reject) => {
+
     (inquirer.prompt((promptsLogin as any)) as any).ui.process.subscribe(
-      ans => resolve(fetch(ans.answer, {
-        redirect: 'manual'
-      }).then(res => [
-        res.headers.get('set-cookie').match(/(?<=hive_UUID=)[a-f0-9]{32}/)[0],
-        res.headers.get('set-cookie').match(/(?<=hive_cookiekey=)[A-Za-z0-9]{10}/)[0]
-      ])),
-      err => console.error(err),
-      res => console.log(res)
+      ans => {
+
+        resolve(fetch(ans.answer, {
+          redirect: 'manual'
+        }).then(res => [
+          res.headers.get('set-cookie').match(/(?<=hive_UUID=)[a-f0-9]{32}/)[0],
+          res.headers.get('set-cookie').match(/(?<=hive_cookiekey=)[A-Za-z0-9]{10}/)[0]
+        ]))
+
+        promptsLogin.complete();
+      },
+      err => console.error(err)
     );
   });
   
-  promptsLogin.next(questionRegistry.get(Questions.LOGIN));
+  promptsLogin.next({
+    type: 'input',
+    name: Questions.LOGIN,
+    message: 'Login Link_:',
+    validate: str => {
+      return true;
+    }//HIVE_LOGIN_LINK_REGEX.test(str)
+  });
 
   return returnValue;
 }
@@ -433,7 +443,10 @@ if (commander.args[0]) {
 
     answers.players = fetch(url).then(res => res.text()).then(res =>
       Promise.all([new Player(res.match(HIVE_CHATREPORT_PLAYER_REGEX)[0]).info().then(i => i.uuid)])
-    )
+    ).catch(err => {
+      console.error("\nError parsing ChatLog:\n", err);
+      process.exit()
+    });
 
     nextQuestion(Questions.CATEGORY);
   } else if (HIVE_GAMELOG_URL_REGEX.test(url)) {
@@ -443,8 +456,12 @@ if (commander.args[0]) {
     answers.players = fetch(url).then(res => res.text()).then(res => [... new Set(res.match(HIVE_GAMELOG_CHAT_PLAYER_REGEX))]);
 
     nextQuestion(Questions.PLAYERS_LIST)
+  }else {
+    console.log("Thats not a link i know what to do with...");
+    answers.evidence = url;
+
+    nextQuestion(Questions.PLAYERS);
   }
 } else {
   nextQuestion(Questions.PLAYERS);
 }
-

@@ -70,30 +70,7 @@ const answers = {
       case Questions.LOGIN:
         answers.login = ans.answer;
         
-        if (commander.args[0]) {
-          const url = commander.args[0];
-
-          if(/(chat|log)/.test(url)){
-            // Chat Log
-            answers.evidence = url;
-            answers.category = 'chat';
-
-            answers.players = fetch(url).then(res => res.text()).then(res =>
-               Promise.all([new Player(res.match(HIVE_CHATREPORT_PLAYER_REGEX)[0]).info().then(i => i.uuid)])
-            )
-
-            nextQuestion(Questions.CATEGORY);
-          } else if (HIVE_GAMELOG_URL_REGEX.test(url)){
-            // Game log
-            answers.evidence = url;
-            answers.category = 'chat';
-            answers.players = fetch(url).then(res => res.text()).then(res => [... new Set(res.match(HIVE_GAMELOG_CHAT_PLAYER_REGEX))]);
-
-            nextQuestion(Questions.PLAYERS_LIST)
-          }
-        } else {
-          nextQuestion(Questions.PLAYERS);
-        }
+        
         break;
       case Questions.PLAYERS_LIST:
         answers.players = Promise.all(ans.answer.map(p => new Player(p).info().then(i => i.uuid)));
@@ -136,8 +113,8 @@ const answers = {
   },
   err => console.error(err),
   async _ => {
-    const [token, uuid, cookiekey] = await getReportToken(answers.login);
-
+    const [token, uuid, cookiekey] = await getReportToken();
+    
     if(answers.videoUpload){
       console.log(`Uploaded Video to ${await answers.evidence}`);
     }
@@ -249,25 +226,63 @@ questionRegistry.set(Questions.COMMENT, {
   default: () => answers.comment
 });
 
-async function getReportToken(loginLink) {
-  const [uuid, cookiekey] = await fetch(loginLink, {
-    redirect: 'manual'
-  }).then(res => {
-    return [
-      res.headers.get('set-cookie').match(/(?<=hive_UUID=)[a-f0-9]{32}/)[0],
-      res.headers.get('set-cookie').match(/(?<=hive_cookiekey=)[A-Za-z0-9]{10}/)[0]
-    ]
-  });
+let loginFailCounter = 0;
+
+async function getReportToken() {
+  let uuid, cookiekey;
+
+  if(conf.has('uuid') && conf.has('cookiekey')){
+    uuid = conf.get('uuid');
+    cookiekey = conf.get('cookiekey');
+  }else{
+    [uuid, cookiekey] = await loginToHive();
+  }
 
   const token = await fetch('http://report.hivemc.com/', {
     headers: {
       cookie: `hive_UUID=${uuid}; hive_cookiekey=${cookiekey}`
     }
   })
-    .then(res => res.text())
-    .then(res => res.match(/(?<=_token: ")[a-zA-Z0-9]{40}(?=")/)[0])
+  .then(res => res.text())
+  .then(res => res.match(/(?<=_token: ")[a-zA-Z0-9]{40}(?=")/)[0])
+  .catch(err => {
+    loginFailCounter++;
+    return null;
+  });
 
-  return [token, uuid, cookiekey];
+  if(!token && loginFailCounter <= 1){
+    conf.set('uuid', null);
+    conf.set('cookiekey', null);
+    
+    return getReportToken();
+  }else if(loginFailCounter <= 1){
+    return [token, uuid, cookiekey];
+  }else{
+    console.error('Failed to login to the Hive...')
+    process.exit();
+  }
+}
+
+async function loginToHive(): Promise<string[]>{
+  const promptsLogin = new Rx.Subject();
+
+  
+  let returnValue: Promise<string[]> = new Promise((resolve, reject) => {
+    (inquirer.prompt((promptsLogin as any)) as any).ui.process.subscribe(
+      ans => resolve(fetch(ans.answer, {
+        redirect: 'manual'
+      }).then(res => [
+        res.headers.get('set-cookie').match(/(?<=hive_UUID=)[a-f0-9]{32}/)[0],
+        res.headers.get('set-cookie').match(/(?<=hive_cookiekey=)[A-Za-z0-9]{10}/)[0]
+      ])),
+      err => console.error(err),
+      res => console.log(res)
+    );
+  });
+  
+  promptsLogin.next(questionRegistry.get(Questions.LOGIN));
+
+  return returnValue;
 }
 
 async function submitReport(token, uuid, cookiekey, uuids, category, reason, evidence, comment) {
@@ -407,4 +422,29 @@ function videosInsert(auth, videoFileName) {
   });
 }
 
-prompts.next(questionRegistry.get(Questions.LOGIN));
+
+if (commander.args[0]) {
+  const url = commander.args[0];
+
+  if (/(chat|log)/.test(url)) {
+    // Chat Log
+    answers.evidence = url;
+    answers.category = 'chat';
+
+    answers.players = fetch(url).then(res => res.text()).then(res =>
+      Promise.all([new Player(res.match(HIVE_CHATREPORT_PLAYER_REGEX)[0]).info().then(i => i.uuid)])
+    )
+
+    nextQuestion(Questions.CATEGORY);
+  } else if (HIVE_GAMELOG_URL_REGEX.test(url)) {
+    // Game log
+    answers.evidence = url;
+    answers.category = 'chat';
+    answers.players = fetch(url).then(res => res.text()).then(res => [... new Set(res.match(HIVE_GAMELOG_CHAT_PLAYER_REGEX))]);
+
+    nextQuestion(Questions.PLAYERS_LIST)
+  }
+} else {
+  nextQuestion(Questions.PLAYERS);
+}
+

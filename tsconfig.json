@@ -3,7 +3,8 @@
     "module": "commonjs",
     "target": "es6",
     "lib": [
-      "ES2017"
+      "es2017",
+      "dom"
     ],
     "outDir": "build"
   },

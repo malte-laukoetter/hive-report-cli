@@ -2,3 +2,5 @@ node_modules
 firebase_service_account.json
 build
 *.log
+client_secret.json
+.vscode

@@ -268,16 +268,20 @@ async function loginToHive(): Promise<string[]>{
   let returnValue: Promise<string[]> = new Promise((resolve, reject) => {
 
     (inquirer.prompt((promptsLogin as any)) as any).ui.process.subscribe(
-      ans => {
+      async ans => {
+        promptsLogin.complete();
 
-        resolve(fetch(ans.answer, {
+        const [uuid, cookiekey] = await fetch(ans.answer, {
           redirect: 'manual'
         }).then(res => [
           res.headers.get('set-cookie').match(/(?<=hive_UUID=)[a-f0-9]{32}/)[0],
           res.headers.get('set-cookie').match(/(?<=hive_cookiekey=)[A-Za-z0-9]{10}/)[0]
-        ]))
+        ]);
 
-        promptsLogin.complete();
+        conf.set('uuid', uuid);
+        conf.set('cookiekey', cookiekey);
+
+        resolve([uuid, cookiekey])
       },
       err => console.error(err)
     );

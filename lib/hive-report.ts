@@ -1,16 +1,20 @@
 import * as inquirer from 'inquirer';
 import { default as fetch } from 'node-fetch';
-import { GameTypes, Player } from 'hive-api';
+import { Player } from 'hive-api';
 import { promisify, inspect } from 'util'
 import * as Configstore from 'configstore';
 import * as Rx from 'rxjs/Rx';
-import * as commander from 'commander';
 import * as readDirRecursiceCallback from 'recursive-readdir'
 import * as fs from 'fs';
 import { Report } from './report';
 import { Categories } from './Category';
 import { getReportToken } from './HiveLogin';
 import { uploadFile } from './YoutubeUpload';
+import * as commander from 'commander';
+
+/*
+ * The filename is important for commander!
+ */
 
 const readdir = promisify(readDirRecursiceCallback);
 const fileStat = promisify(fs.stat)
@@ -23,19 +27,6 @@ const HIVE_CHATREPORT_ID_REGEX = /(?<=http:\/\/chatlog\.hivemc\.com\/\?logId=)[a
 
 const conf = new Configstore('hive-report-cmd');
 
-commander
-  .usage('[options] [chatreport or gamelog]')
-  .option('--max-upload-speed <n>', 'Sets the maximum speed for Youtube uploads in bytes/s', parseInt)
-  .option('--video-dir <str>', 'Sets the directory to search for videos for hacking reports')
-  .parse(process.argv);
-  
-if (commander.maxUploadSpeed) conf.set('max_upload_speed', commander.maxUploadSpeed);
-if (!conf.has('max_upload_speed')) conf.set('max_upload_speed', 250000);
-
-if (commander.videoDir) conf.set('video_dir', commander.videoDir);
-
-GameTypes.update();
-
 enum Questions {
   LOGIN = 'login',
   PLAYERS = 'players',
@@ -46,6 +37,24 @@ enum Questions {
   EVIDENCE_VIDEO = 'evidence_video',
   COMMENT = 'comment'
 };
+
+async function saveStats(report: Report) {
+  const reports = conf.has('reports') ? conf.get('reports') : [];
+
+  reports.push({
+    players: await report.uuids(),
+    category: (await report.category).id,
+    reason: (await report.reason).id,
+    evidence: await report.evidence,
+    comment: await report.comment
+  });
+
+  conf.set('reports', reports);
+}
+
+commander
+  .description('creates a report')
+  .parse(process.argv);
 
 const questionRegistry: Map<Questions, any> = new Map();
 
@@ -66,7 +75,7 @@ prompt.ui.process.subscribe(
         ans.answer.map(a => answers.report.addPlayer(a));
         nextQuestion(Questions.CATEGORY);
         break;
-        case Questions.PLAYERS:
+      case Questions.PLAYERS:
         ans.answer.split(/ /g).map(a => answers.report.addPlayer(a));
         nextQuestion(Questions.CATEGORY);
         break;
@@ -76,14 +85,14 @@ prompt.ui.process.subscribe(
         break;
       case Questions.REASON:
         answers.report.reason = ans.answer;
-        if ((await answers.report.category).id === 'hacking' && conf.has('video_dir')){
+        if ((await answers.report.category).id === 'hacking' && conf.has('video_dir')) {
           nextQuestion(Questions.EVIDENCE_VIDEO);
-        }else{
+        } else {
           nextQuestion(Questions.EVIDENCE);
         }
         break;
       case Questions.EVIDENCE_VIDEO:
-        if (ans.answer === 'write your own'){
+        if (ans.answer === 'write your own') {
           nextQuestion(Questions.EVIDENCE);
         } else {
           answers.videoUpload = true;
@@ -109,8 +118,8 @@ prompt.ui.process.subscribe(
       console.log(err.message);
       process.exit();
     });
-    
-    if(answers.videoUpload){
+
+    if (answers.videoUpload) {
       console.log(`Uploaded Video to ${await answers.report.evidence}`);
     }
 
@@ -131,20 +140,6 @@ prompt.ui.process.subscribe(
     });
   }
 );
-
-async function saveStats(report: Report){
-  const reports = conf.has('reports') ? conf.get('reports') : [];
-
-  reports.push({
-    players: await report.uuids(),
-    category: (await report.category).id,
-    reason: (await report.reason).id,
-    evidence: await report.evidence,
-    comment: await report.comment
-  });
-
-  conf.set('reports', reports);
-}
 
 function nextQuestion(id: Questions) {
   prompts.next(questionRegistry.get(id));
@@ -171,7 +166,7 @@ questionRegistry.set(Questions.PLAYERS_LIST, {
   type: 'checkbox',
   name: Questions.PLAYERS_LIST,
   message: 'Players:',
-  choices: () => Promise.all([... answers.report.players].map(async player => {
+  choices: () => Promise.all([...answers.report.players].map(async player => {
     return {
       name: (await player).name,
       value: player,
@@ -204,9 +199,9 @@ questionRegistry.set(Questions.EVIDENCE, {
   message: 'Evidence:',
   validate: async (str) => (await answers.report.category).validate(str),
   filter: str => {
-    if (HIVE_CHATREPORT_ID_REGEX.test(str)){
+    if (HIVE_CHATREPORT_ID_REGEX.test(str)) {
       str = `https://hivemc.com/chatlog/${str.match(HIVE_CHATREPORT_ID_REGEX)[0]}`
-    } 
+    }
 
     return str
   },
@@ -238,8 +233,6 @@ questionRegistry.set(Questions.COMMENT, {
   default: () => answers.report.comment
 });
 
-
-
 if (commander.args[0]) {
   const url = commander.args[0];
 
@@ -260,13 +253,13 @@ if (commander.args[0]) {
     // Game log
     answers.report.evidence = url;
     answers.report.category = Categories.get('chat');
-    
+
     fetch(url).then(res => res.text()).then(res => {
       [... new Set(res.match(HIVE_GAMELOG_CHAT_PLAYER_REGEX))].map(a => answers.report.addPlayer(a));
       return;
     })
-    .then(_ => nextQuestion(Questions.PLAYERS_LIST));
-  }else {
+      .then(_ => nextQuestion(Questions.PLAYERS_LIST));
+  } else {
     console.log("Thats not a link I know what to do with...");
     answers.report.evidence = url;
 

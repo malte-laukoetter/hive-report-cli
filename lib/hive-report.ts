@@ -72,6 +72,7 @@ prompt.ui.process.subscribe(
   async ans => {
     switch (ans.name) {
       case Questions.PLAYERS_LIST:
+        answers.report.players = new Set();
         ans.answer.map(a => answers.report.addPlayer(a));
         nextQuestion(Questions.CATEGORY);
         break;

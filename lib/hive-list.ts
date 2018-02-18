@@ -19,7 +19,7 @@ getLatest10Reports()
   })
   .then(res => {
     res.map(report => {
-      console.log(`${report.submissionDate.toISOString().substr(0, 19).replace('T', ' ')} - ${report.status.padEnd(13)} (${report.reason}: ${[...report.players].map(pl => pl.name).join()})`)
+      console.log(`${report.submissionDate.toISOString().substr(0, 19).replace('T', ' ')} - ${report.status.padEnd(13)} (${report.reason}: ${[...report.players].map(pl => pl.name).join(', ')})`)
     });
 
     process.exit();

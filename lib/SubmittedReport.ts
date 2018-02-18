@@ -2,6 +2,7 @@ import { Player } from "hive-api";
 import { Category } from "./Category";
 import { Reason } from "./Reason";
 import { default as fetch } from 'node-fetch';
+import { getReportInfo } from "./HiveLogin";
 
 export enum Status{
   PENDING = "PENDING",
@@ -17,6 +18,9 @@ export class SubmittedReport {
   private _evidence: string;
   private _comment: string;
   private _status: Status;
+  private _handledBy: Player;
+  private _staffComment: string;
+  private _handledAt: Date;
   public readonly submissionDate: Date;
 
   constructor(readonly id: string){
@@ -71,7 +75,35 @@ export class SubmittedReport {
     return this._status;
   }
 
+  set handledBy(handledBy: Player) {
+    this._handledBy = handledBy;
+  }
+
+  get handledBy(): Player {
+    return this._handledBy;
+  }
+
+  set staffComment(staffComment: string) {
+    this._staffComment = staffComment;
+  }
+
+  get staffComment(): string {
+    return this._staffComment;
+  }
+
+  set handledAt(handledAt: Date) {
+    this._handledAt = handledAt;
+  }
+
+  get handledAt(): Date {
+    return this._handledAt;
+  }
+
   uuids(): Promise<string[]> {
     return Promise.all([... this.players].map(async player => (await player).info().then(i => i.uuid)));
+  }
+
+  load(): Promise<any> {
+    return getReportInfo(this);
   }
 }

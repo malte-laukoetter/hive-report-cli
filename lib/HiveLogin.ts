@@ -10,6 +10,7 @@ const conf = new Configstore('hive-report-cmd');
 const HIVE_LOGIN_LINK_REGEX = /https\:\/\/secure.hivemc.com\/directlogin\/\?UUID\=.*\&token=.*/;
 const HIVE_REPORT_LIST_REPORTIDS_REGEX = /(?<=href=\"\/view\/)[a-f0-9]{24}/g;
 const HIVE_REPORT_LIST_REGEX = /([a-zA-Z0-9_]{3,16})<\/td>\n<td>([a-zA-t ()]{0,20})<\/td>\n<td>([a-zA-t]{0,20})<\/td>\n<td><a href="\/view\/([a-f0-9]{24})/g
+const HIVE_REPORT_INFO_REGEX = /Report against ([a-zA-Z0-9_, ]*) on \d\d\d\d-\d\d-\d\d \d\d?:\d\d:\d\d<\/h1>\nReport reason: (.*). <br><br>\nReport status: ([a-zA-Z]*)\n\.<br><br>\nReport comment: (.*)<br><br>\nHandled on: (\d\d\d\d-\d\d-\d\d \d\d?:\d\d:\d\d)<br><br>\nHandled by: ([a-zA-Z_0-9]{3,16})<br><br>\nStaff comment: (.*)<br>/
 
 export async function getLatest10Reports(): Promise<SubmittedReport[]> {
   const [uuid, cookiekey] = await getUuidAndCookiekey();
@@ -58,6 +59,49 @@ export async function getLatest10Reports(): Promise<SubmittedReport[]> {
     conf.delete('cookiekey');
 
     return getLatest10Reports();
+  } else {
+    throw new Error('Failed to login to the Hive...')
+  }
+}
+
+export async function getReportInfo(report: SubmittedReport): Promise<SubmittedReport> {
+  const [uuid, cookiekey] = await getUuidAndCookiekey();
+  
+  const updatedReport = await fetch(`https://report.hivemc.com/view/${report.id}`, {
+    headers: {
+      cookie: `hive_UUID=${uuid}; hive_cookiekey=${cookiekey}`
+    }
+  })
+  .then(res => res.text())
+  .then(res => {
+    return res;
+  })
+  .then(res => {
+    let match = HIVE_REPORT_INFO_REGEX.exec(res);
+
+    report.players = new Set(match[1].match(/[a-zA-Z0-9_]{3,16}/g).map(a => new Player(a)));
+    report.reason = match[2] as any;
+    report.status = match[3] as any;
+    report.comment = match[4];
+    report.handledAt = new Date(match[5])
+    report.handledBy = new Player(match[6])
+    report.staffComment = match[7];
+
+    return report;
+  })
+  .catch(err => {
+    console.log(err)
+    loginFailCounter++;
+    return null;
+  });
+  
+  if (updatedReport){
+    return updatedReport;
+  }else if (loginFailCounter <= 1) {
+    conf.delete('uuid');
+    conf.delete('cookiekey');
+
+    return getReportInfo(report);
   } else {
     throw new Error('Failed to login to the Hive...')
   }

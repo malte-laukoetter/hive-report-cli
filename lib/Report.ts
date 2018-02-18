@@ -25,6 +25,10 @@ export class Report {
     return this._players;
   }
 
+  set players(players: Set<Player | Promise<Player>>){
+    this._players = players;
+  }
+
   set category(category: Category | Promise<Category>){
     this._category = category;
   }

@@ -13,7 +13,7 @@ getLatest10Reports()
     // save the ids to the config
     const reports = conf.has('report_ids') ? new Set(conf.get('report_ids')) : new Set();
     res.map(report => reports.add(report.id));
-    conf.set('report_ids', [...reports]);
+    conf.set('report_ids', [...reports].sort().reverse());
 
     return res;
   })

@@ -18,7 +18,6 @@ import * as commander from 'commander';
 
 const readdir = promisify(readDirRecursiceCallback);
 const fileStat = promisify(fs.stat)
-const readFile = promisify(fs.readFile)
 
 const HIVE_GAMELOG_URL_REGEX = /.*hivemc\.com\/\w*\/game\/\d*/;
 const HIVE_GAMELOG_CHAT_PLAYER_REGEX = /(?<=class="chat">(\s|\\n)<p><em>)[A-Za-z0-9_]{3,16}/g;

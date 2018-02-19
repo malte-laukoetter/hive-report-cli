@@ -16,7 +16,7 @@ inquirer.prompt({
   type: 'list',
   name: 'report',
   message: 'Report:',
-  choices: _ => (conf.get('report_ids') as string[]).map(id => new SubmittedReport(id)).map(report => { 
+  choices: _ => (conf.get('report_ids') as string[]).sort().reverse().map(id => new SubmittedReport(id)).map(report => { 
     return {
       value: report,
       name: `${report.submissionDate.toISOString().substr(0, 19).replace('T', ' ')} (${report.id})`,

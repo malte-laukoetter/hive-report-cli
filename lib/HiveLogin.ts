@@ -9,10 +9,13 @@ let loginFailCounter = 0;
 const conf = new Configstore('hive-report-cmd');
 const HIVE_LOGIN_LINK_REGEX = /https\:\/\/secure.hivemc.com\/directlogin\/\?UUID\=.*\&token=.*/;
 const HIVE_REPORT_LIST_REPORTIDS_REGEX = /(?<=href=\"\/view\/)[a-f0-9]{24}/g;
-const HIVE_REPORT_LIST_REGEX = /([a-zA-Z0-9_]{3,16})<\/td>\n<td>([a-zA-t ()]{0,20})<\/td>\n<td>([a-zA-t]{0,20})<\/td>\n<td><a href="\/view\/([a-f0-9]{24})/g
-const HIVE_REPORT_INFO_REGEX = /Report against ([a-zA-Z0-9_, ]*) on \d\d\d\d-\d\d-\d\d \d\d?:\d\d:\d\d<\/h1>\nReport reason: (.*). <br><br>\nReport status: ([a-zA-Z]*)\n\.<br><br>\nReport comment: (.*)<br><br>\nHandled on: (\d\d\d\d-\d\d-\d\d \d\d?:\d\d:\d\d)<br><br>\nHandled by: ([a-zA-Z_0-9]{3,16})<br><br>\nStaff comment: (.*)<br>/
+const HIVE_REPORT_LIST_REGEX = /([a-zA-Z0-9_ ,]*)<\/td>\n<td>([a-zA-t ()]{0,20})<\/td>\n<td>([a-zA-t]{0,20})<\/td>\n<td><a href="\/view\/([a-f0-9]{24})/g
+const HIVE_REPORT_INFO_REGEX_ANSWERED = /Report against ([a-zA-Z0-9_, ]*) on \d\d\d\d-\d\d-\d\d \d\d?:\d\d:\d\d<\/h1>\nReport reason: (.*). <br><br>\nReport status: ([a-zA-Z]*)\n\.<br><br>\nReport comment: (.*)<br><br>\nHandled on: (\d\d\d\d-\d\d-\d\d \d\d?:\d\d:\d\d)<br><br>\nHandled by: ([a-zA-Z_0-9]{3,16})<br><br>\nStaff comment: (.*)<br>/
+const HIVE_REPORT_INFO_REGEX_IS_PENDING = /Report status: Pending/
+const HIVE_REPORT_INFO_REGEX_PENDING = /Report against ([a-zA-Z0-9_, ]*) on \d\d\d\d-\d\d-\d\d \d\d?:\d\d:\d\d<\/h1>\nReport reason: (.*). <br><br>\nReport status: ([a-zA-Z]*)\n\.<br><br>\nReport comment: (.*)<br><br>/
 
 export async function getLatest10Reports(): Promise<SubmittedReport[]> {
+  //todo: support for multiple players
   const [uuid, cookiekey] = await getUuidAndCookiekey();
   
   const reports = await fetch('https://report.hivemc.com/submitted', {
@@ -22,16 +25,13 @@ export async function getLatest10Reports(): Promise<SubmittedReport[]> {
   })
   .then(res => res.text())
   .then(res => {
-    return res;
-  })
-  .then(res => {
     let match;
     let result = [];
-
+    
     // only way to get the capturing groups of all matches i know of...
     while ((match = HIVE_REPORT_LIST_REGEX.exec(res)) !== null) {
       result.push({
-        name: match[1],
+        names: match[1].match(/[a-zA-Z0-9_]{3,16}/g),
         reason: match[2],
         status: match[3],
         id: match[4],
@@ -40,14 +40,15 @@ export async function getLatest10Reports(): Promise<SubmittedReport[]> {
 
     return result;
   })
-  .then(res => res.map(({name: username, reason: reason, status: status, id: id}) => {
+  .then(res => res.map(({names: names, reason: reason, status: status, id: id}) => {
     let report = new SubmittedReport(id);
-    report.players = new Set([new Player(username)]);
+    report.players = new Set(names.map(name => new Player(name)));
     report.reason = reason;
     report.status = status;
     return report;
   }))
   .catch(err => {
+    console.log(err)
     loginFailCounter++;
     return null;
   });
@@ -55,12 +56,12 @@ export async function getLatest10Reports(): Promise<SubmittedReport[]> {
   if(reports){
     return reports;
   }else if (loginFailCounter <= 1) {
-    conf.delete('uuid');
-    conf.delete('cookiekey');
+  //  conf.delete('uuid');
+  //  conf.delete('cookiekey');
 
-    return getLatest10Reports();
+  //  return getLatest10Reports();
   } else {
-    throw new Error('Failed to login to the Hive...')
+   // throw new Error('Failed to login to the Hive...')
   }
 }
 
@@ -77,16 +78,25 @@ export async function getReportInfo(report: SubmittedReport): Promise<SubmittedR
     return res;
   })
   .then(res => {
-    let match = HIVE_REPORT_INFO_REGEX.exec(res);
+    if (HIVE_REPORT_INFO_REGEX_IS_PENDING.test(res)){
+      let match = HIVE_REPORT_INFO_REGEX_PENDING.exec(res);
+      
+      report.players = new Set(match[1].match(/[a-zA-Z0-9_]{3,16}/g).map(a => new Player(a)));
+      report.reason = match[2] as any;
+      report.status = match[3] as any;
+      report.comment = match[4];
+    }else {
+      let match = HIVE_REPORT_INFO_REGEX_ANSWERED.exec(res);
 
-    report.players = new Set(match[1].match(/[a-zA-Z0-9_]{3,16}/g).map(a => new Player(a)));
-    report.reason = match[2] as any;
-    report.status = match[3] as any;
-    report.comment = match[4];
-    report.handledAt = new Date(match[5])
-    report.handledBy = new Player(match[6])
-    report.staffComment = match[7];
-
+      report.players = new Set(match[1].match(/[a-zA-Z0-9_]{3,16}/g).map(a => new Player(a)));
+      report.reason = match[2] as any;
+      report.status = match[3] as any;
+      report.comment = match[4];
+      report.handledAt = new Date(match[5])
+      report.handledBy = new Player(match[6])
+      report.staffComment = match[7];
+    }
+    
     return report;
   })
   .catch(err => {

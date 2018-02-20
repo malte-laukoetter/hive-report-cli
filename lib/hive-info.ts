@@ -29,18 +29,18 @@ inquirer.prompt({
   const report: SubmittedReport = ans.report;
   await report.load();
 
-  console.log(`Report: https://report.hivemc.com/view/${report.id}
-  
-Status: ${report.status}
-Created at: ${report.submissionDate.toISOString().substr(0, 19).replace('T', ' ')}
-
-Reported Players: ${[... report.players].map(p => p.name).join(', ')}
-Reason: ${report.reason}
-Comment: ${entities.decode(report.comment)}
-
-Handled by: ${report.handledBy.name}
-Handled on: ${report.handledAt.toISOString().substr(0, 19).replace('T', ' ')}
-Staff Comment: ${entities.decode(report.staffComment)}`)
+  console.log(`Report: https://report.hivemc.com/view/${report.id}`)
+  console.log();
+  if (report.status)         console.log(`Status: ${report.status}`);
+  if (report.submissionDate) console.log(`Created at: ${report.submissionDate.toISOString().substr(0, 19).replace('T', ' ')}`);
+  console.log();
+  if (report.players) console.log(`Reported Players: ${[...report.players].map(p => p.name).join(', ')}`);
+  if (report.reason)  console.log(`Reason: ${report.reason}`);
+  if (report.comment) console.log(`Comment: ${entities.decode(report.comment)}`);
+  if (report.handledBy || report.handledAt || report.staffComment) console.log();
+  if (report.handledBy)    console.log(`Handled by: ${report.handledBy.name}`)
+  if (report.handledAt)    console.log(`Handled on: ${report.handledAt.toISOString().substr(0, 19).replace('T', ' ')}`)
+  if (report.staffComment) console.log(`Staff Comment: ${entities.decode(report.staffComment)}`)
 
   process.exit();
 });

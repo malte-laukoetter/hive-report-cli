@@ -1,4 +1,4 @@
-# hive-report-cmd
+# hive-report-cli
 
 A command line interface that allowes to create and view reports on https://report.hivemc.com.
 

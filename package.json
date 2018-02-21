@@ -1,5 +1,5 @@
 {
-  "name": "hive-report-cmd",
+  "name": "hive-report-cli",
   "version": "1.0.0",
   "description": "A cli to create and view reports on https://report.hivemc.com",
   "keywords": [
@@ -11,7 +11,7 @@
     "typescript"
   ],
   "bugs": {
-    "url": "https://github.com/Lergin/hive-report-cmd/issues"
+    "url": "https://github.com/Lergin/hive-report-cli/issues"
   },
   "license": "MIT",
   "author": {
@@ -29,7 +29,7 @@
   "bin": {
     "hive": "./build/hive.js"
   },
-  "repository": "github:Lergin/hive-report-cmd",
+  "repository": "github:Lergin/hive-report-cli",
   "scripts": {
     "start": "npm run build && node build/hive.js",
     "build": "tsc",

@@ -1,6 +1,6 @@
 {
   "name": "hive-report-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A cli to create and view reports on https://report.hivemc.com",
   "keywords": [
     "cli",
@@ -26,6 +26,7 @@
     "tsconfig.json"
   ],
   "main": "build/hive.js",
+  "types": "./build/hive.d.ts",    
   "bin": {
     "hive": "./build/hive.js"
   },

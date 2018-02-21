@@ -11,6 +11,7 @@ import { Categories } from './Category';
 import { uploadFile } from './YoutubeUpload';
 import * as commander from 'commander';
 import { HiveLogin } from './HiveLogin';
+import * as pkginfo from 'pkginfo';
 
 /*
  * The filename is important for commander!
@@ -24,7 +25,8 @@ const HIVE_GAMELOG_CHAT_PLAYER_REGEX = /(?<=class="chat">(\s|\\n)<p><em>)[A-Za-z
 const HIVE_CHATREPORT_PLAYER_REGEX = /(?<=Chat log of <a href="\/player\/)[a-zA-Z0-9_]{3,16}/
 const HIVE_CHATREPORT_ID_REGEX = /(?<=http:\/\/chatlog\.hivemc\.com\/\?logId=)[a-f0-9]*/
 
-const conf = new Configstore('hive-report-cmd');
+pkginfo(module, 'name');
+const conf = new Configstore(module.exports.name);
 
 enum Questions {
   LOGIN = 'login',

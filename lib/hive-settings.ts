@@ -1,11 +1,13 @@
 import * as commander from 'commander';
 import * as Configstore from 'configstore';
+import * as pkginfo from 'pkginfo';
 
 /*
  * The filename is important for commander!
  */
 
-const conf = new Configstore('hive-report-cmd');
+pkginfo(module, 'name');
+const conf = new Configstore(module.exports.name);
 
 commander
   .description('update some settings')

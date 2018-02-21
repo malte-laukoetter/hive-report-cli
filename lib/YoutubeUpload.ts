@@ -6,9 +6,12 @@ import { Throttle } from 'stream-throttle';
 import { promisify, inspect } from 'util'
 import * as path from 'path';
 import * as Configstore from 'configstore';
+import * as pkginfo from 'pkginfo';
 
 const readFile = promisify(fs.readFile)
-const conf = new Configstore('hive-report-cmd');
+
+pkginfo(module, 'name');
+const conf = new Configstore(module.exports.name);
 
 export function uploadFile(filePath, afterAuthCallback) {
   return readFile(path.join(__dirname, '..', 'client_secret.json')).then(async content => {

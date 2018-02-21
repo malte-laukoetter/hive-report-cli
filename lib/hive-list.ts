@@ -3,12 +3,14 @@ import * as commander from 'commander';
 import { HiveLogin } from "./HiveLogin";
 import { SubmittedReport } from "./SubmittedReport";
 import { Player } from "hive-api";
+import * as pkginfo from 'pkginfo';
 
 /*
  * The filename is important for commander!
  */
 
-const conf = new Configstore('hive-report-cmd');
+pkginfo(module, 'name');
+const conf = new Configstore(module.exports.name);
 
 const HIVE_REPORT_LIST_REPORTIDS_REGEX = /(?<=href=\"\/view\/)[a-f0-9]{24}/g;
 const HIVE_REPORT_LIST_REGEX = /([a-zA-Z0-9_ ,]*)<\/td>\n<td>([a-zA-t ()]{0,20})<\/td>\n<td>([a-zA-t]{0,20})<\/td>\n<td><a href="\/view\/([a-f0-9]{24})/g

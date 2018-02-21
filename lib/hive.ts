@@ -3,8 +3,10 @@
 import * as Configstore from 'configstore';
 import * as commander from 'commander';
 import { GameTypes } from 'hive-api';
+import * as pkginfo from 'pkginfo';
 
-const conf = new Configstore('hive-report-cmd');
+pkginfo(module, 'name');
+const conf = new Configstore(module.exports.name);
 GameTypes.update();
 
 commander

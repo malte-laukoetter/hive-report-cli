@@ -2,6 +2,7 @@ import * as Configstore from 'configstore';
 import * as commander from 'commander';
 import * as inquirer from 'inquirer';
 import { Html5Entities as Entities} from 'html-entities';
+import * as pkginfo from 'pkginfo';
 import { SubmittedReport } from "./SubmittedReport";
 import { HiveLogin } from "./HiveLogin";
 
@@ -10,7 +11,9 @@ import { HiveLogin } from "./HiveLogin";
  */
 
 const entities = new Entities()
-const conf = new Configstore('hive-report-cmd');
+
+pkginfo(module, 'name');
+const conf = new Configstore(module.exports.name);
 
 commander
   .description('infos about a choosen report')

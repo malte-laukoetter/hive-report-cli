@@ -1,6 +1,10 @@
 import * as commander from 'commander';
 import * as Configstore from 'configstore';
 
+/*
+ * The filename is important for commander!
+ */
+
 const conf = new Configstore('hive-report-cmd');
 
 commander

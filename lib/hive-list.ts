@@ -4,6 +4,10 @@ import { HiveLogin } from "./HiveLogin";
 import { SubmittedReport } from "./SubmittedReport";
 import { Player } from "hive-api";
 
+/*
+ * The filename is important for commander!
+ */
+
 const conf = new Configstore('hive-report-cmd');
 
 const HIVE_REPORT_LIST_REPORTIDS_REGEX = /(?<=href=\"\/view\/)[a-f0-9]{24}/g;

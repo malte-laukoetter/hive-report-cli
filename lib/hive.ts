@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import * as Configstore from 'configstore';
 import * as commander from 'commander';
 import { GameTypes } from 'hive-api';

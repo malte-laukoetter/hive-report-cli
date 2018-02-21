@@ -3,6 +3,10 @@ import * as Rx from 'rxjs/Rx';
 import * as inquirer from 'inquirer';
 import {default as fetch} from 'node-fetch';
 import {RequestInit, Request, Response} from 'node-fetch';
+import * as pkginfo from 'pkginfo';
+
+// saves version and name to module.exports
+pkginfo(module, 'version', 'name');
 
 const HIVE_LOGIN_LINK_REGEX = /https\:\/\/secure.hivemc.com\/directlogin\/\?UUID\=.*\&token=.*/;
 const HIVE_LOGIN_REDIRECT_REGEX = /secure.hivemc.com\/login/;
@@ -77,6 +81,7 @@ export class HiveLogin {
     // merge the init in such a way that we only add our cookies
     const mergedInit: RequestInit = {... init, ...{
       headers: {
+        ... { userAgent: `${module.exports.name} (${module.exports.version})` },
         ... init.headers ? init.headers : {},
         ... {
           cookie: (cookies + additionalCookies)

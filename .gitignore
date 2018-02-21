@@ -4,3 +4,5 @@ build
 *.log
 client_secret.json
 .vscode
+data.json
+urlList.txt

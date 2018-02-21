@@ -1,4 +1,5 @@
 import { Reason } from "./Reason";
+import { ChoiceType } from "inquirer";
 
 export class Categories {
   static readonly categories: Set<Category> = new Set();
@@ -37,11 +38,10 @@ export class Category {
     return [... this.reasons].map(reason => reason.toChoice());
   }
 
-  toChoice() {
+  toChoice(): ChoiceType {
     return {
       name: this.name,
-      value: this,
-      short: this.name
+      value: this as any
     }
   }
   

@@ -5,6 +5,10 @@ import { Html5Entities as Entities} from 'html-entities';
 import { SubmittedReport } from "./SubmittedReport";
 import { HiveLogin } from "./HiveLogin";
 
+/*
+ * The filename is important for commander!
+ */
+
 const entities = new Entities()
 const conf = new Configstore('hive-report-cmd');
 

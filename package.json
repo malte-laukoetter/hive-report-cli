@@ -1,38 +1,57 @@
 {
   "name": "hive-report-cmd",
   "version": "1.0.0",
-  "description": "A command line tool to report on hivemc.com",
-  "main": "build/hive.js",
-  "scripts": {
-    "start": "tsc && node build/hive.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "A cli to create and view reports on https://report.hivemc.com",
+  "keywords": [
+    "cli",
+    "command",
+    "hive",
+    "hivemc",
+    "minecraft",
+    "typescript"
+  ],
+  "bugs": {
+    "url": "https://github.com/Lergin/hive-report-cmd/issues"
   },
-  "author": "Malte Laukötter",
   "license": "MIT",
+  "author": {
+    "name": "Malte Laukötter",
+    "email": "hey@lergin.de",
+    "url": "https://lergin.de"
+  },
+  "files": [
+    "build",
+    "lib",
+    "client_secret.json",
+    "tsconfig.json"
+  ],
+  "main": "build/hive.js",
+  "bin": {
+    "hive": "./build/hive.js"
+  },
+  "repository": "github:Lergin/hive-report-cmd",
+  "scripts": {
+    "start": "npm run build && node build/hive.js",
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
   "dependencies": {
-    "@types/form-data": "^2.2.1",
     "@types/inquirer": "0.0.36",
     "@types/node-fetch": "^1.6.7",
-    "@types/yargs": "^10.0.1",
     "commander": "^2.14.1",
     "configstore": "^3.1.1",
-    "decode-html": "^2.0.0",
-    "fetch-cookie": "^0.7.0",
     "follow-redirects": "1.2.6",
-    "form-data": "^2.3.1",
     "google-auth-library": "^1.2.1",
     "googleapis": "^26.0.1",
     "hive-api": "^1.4.2",
     "html-entities": "^1.2.1",
     "inquirer": "^5.1.0",
     "node-fetch": "^2.0.0",
+    "pkginfo": "^0.4.1",
     "recursive-readdir": "^2.2.1",
-    "request": "^2.83.0",
     "rxjs": "^5.5.6",
     "stream-throttle": "^0.1.3",
     "typescript": "^2.7.1",
-    "urlencode": "^1.1.0",
-    "vorpal": "^1.12.0",
-    "yargs": "^11.0.0"
+    "urlencode": "^1.1.0"
   }
 }

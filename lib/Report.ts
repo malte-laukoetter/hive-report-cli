@@ -2,7 +2,7 @@ import { Player } from "hive-api";
 import { Category } from "./Category";
 import { Reason } from "./Reason";
 import * as urlencode from 'urlencode';
-import { default as fetch } from 'node-fetch';
+import { default as fetch, Response } from 'node-fetch';
 import { HiveLogin } from "./HiveLogin";
 
 export class Report {
@@ -76,7 +76,7 @@ export class Report {
         'X-Requested-With': 'XMLHttpRequest'
       },
       body: payload
-    })
+    });
   }
 
   uuids(): Promise<string[]>{

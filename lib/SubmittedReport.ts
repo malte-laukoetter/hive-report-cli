@@ -2,7 +2,11 @@ import { Player } from "hive-api";
 import { Category } from "./Category";
 import { Reason } from "./Reason";
 import { default as fetch } from 'node-fetch';
-import { getReportInfo } from "./HiveLogin";
+import { HiveLogin } from "./HiveLogin";
+
+const HIVE_REPORT_INFO_REGEX_ANSWERED = /Report against ([a-zA-Z0-9_, ]*) on \d\d\d\d-\d\d-\d\d \d\d?:\d\d:\d\d<\/h1>\nReport reason: (.*). <br><br>\nReport status: ([a-zA-Z]*)\n\.<br><br>\nReport comment: (.*)<br><br>\nHandled on: (\d\d\d\d-\d\d-\d\d \d\d?:\d\d:\d\d)<br><br>\nHandled by: ([a-zA-Z_0-9]{3,16})<br><br>\nStaff comment: (.*)<br>/
+const HIVE_REPORT_INFO_REGEX_IS_PENDING = /Report status: Pending/
+const HIVE_REPORT_INFO_REGEX_PENDING = /Report against ([a-zA-Z0-9_, ]*) on \d\d\d\d-\d\d-\d\d \d\d?:\d\d:\d\d<\/h1>\nReport reason: (.*). <br><br>\nReport status: ([a-zA-Z]*)\n\.<br><br>\nReport comment: (.*)<br><br>/
 
 export enum Status{
   PENDING = "PENDING",
@@ -103,7 +107,33 @@ export class SubmittedReport {
     return Promise.all([... this.players].map(async player => (await player).info().then(i => i.uuid)));
   }
 
-  load(): Promise<any> {
-    return getReportInfo(this);
+  load(login: HiveLogin): Promise<void> {
+    return login.fetch(`https://report.hivemc.com/view/${this.id}`)
+      .then(res => res.text())
+      .then(res => {
+        return res;
+      })
+      .then(res => {
+        if (HIVE_REPORT_INFO_REGEX_IS_PENDING.test(res)) {
+          let match = HIVE_REPORT_INFO_REGEX_PENDING.exec(res);
+
+          this.players = new Set(match[1].match(/[a-zA-Z0-9_]{3,16}/g).map(a => new Player(a)));
+          this.reason = match[2] as any;
+          this.status = match[3] as any;
+          this.comment = match[4];
+        } else {
+          let match = HIVE_REPORT_INFO_REGEX_ANSWERED.exec(res);
+
+          this.players = new Set(match[1].match(/[a-zA-Z0-9_]{3,16}/g).map(a => new Player(a)));
+          this.reason = match[2] as any;
+          this.status = match[3] as any;
+          this.comment = match[4];
+          this.handledAt = new Date(match[5])
+          this.handledBy = new Player(match[6])
+          this.staffComment = match[7];
+        }
+
+        return;
+      });
   }
 }

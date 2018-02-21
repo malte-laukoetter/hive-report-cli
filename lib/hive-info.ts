@@ -1,9 +1,9 @@
-import { getLatest10Reports } from "./HiveLogin";
 import * as Configstore from 'configstore';
 import * as commander from 'commander';
 import * as inquirer from 'inquirer';
 import { Html5Entities as Entities} from 'html-entities';
 import { SubmittedReport } from "./SubmittedReport";
+import { HiveLogin } from "./HiveLogin";
 
 const entities = new Entities()
 const conf = new Configstore('hive-report-cmd');
@@ -27,7 +27,8 @@ inquirer.prompt({
 .then(async ans => {
   
   const report: SubmittedReport = ans.report;
-  await report.load();
+  const login = new HiveLogin();
+  await report.load(login);
 
   console.log(`Report: https://report.hivemc.com/view/${report.id}`)
   console.log();

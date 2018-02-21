@@ -8,9 +8,9 @@ import * as readDirRecursiceCallback from 'recursive-readdir'
 import * as fs from 'fs';
 import { Report } from './report';
 import { Categories } from './Category';
-import { getReportToken } from './HiveLogin';
 import { uploadFile } from './YoutubeUpload';
 import * as commander from 'commander';
+import { HiveLogin } from './HiveLogin';
 
 /*
  * The filename is important for commander!
@@ -114,18 +114,15 @@ prompt.ui.process.subscribe(
     // close the prompt for real so we can create a new one
     prompt.ui.close();
 
-    const [token, uuid, cookiekey] = await getReportToken().catch((err: Error) => {
-      console.log(err.message);
-      process.exit();
-    });
-
     if (answers.videoUpload) {
       console.log(`Uploaded Video to ${await answers.report.evidence}`);
     }
 
     saveStats(answers.report);
 
-    answers.report.submit(token, uuid, cookiekey).then(res => {
+    const login = new HiveLogin()
+
+    answers.report.submit(login).then(res => {
       if (res.status === 200) {
         console.log("Report submitted successfully");
         process.exit();

@@ -3,6 +3,7 @@ import { Category } from "./Category";
 import { Reason } from "./Reason";
 import * as urlencode from 'urlencode';
 import { default as fetch } from 'node-fetch';
+import { HiveLogin } from "./HiveLogin";
 
 export class Report {
   private _players: Set<Player | Promise<Player>> = new Set();
@@ -61,13 +62,12 @@ export class Report {
     return this._comment;
   }
 
-  async submit(token: string, uuid: string, cookiekey: string){
-    const payload = await this.createPayload(token);
+  async submit(login: HiveLogin){
+    const payload = await this.createPayload(login);
     
-    return fetch('https://report.hivemc.com/ajax/receive', {
+    return login.fetch('https://report.hivemc.com/ajax/receive', {
       method: 'POST',
       headers: {
-        'Cookie': `hive_UUID=${uuid}; hive_cookiekey=${cookiekey}`,
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'Content-Length': payload.length.toString(),
         'Host': 'report.hivemc.com',
@@ -83,7 +83,7 @@ export class Report {
     return Promise.all([... this.players].map(async player => (await player).info().then(i => i.uuid)));
   }
 
-  private async createPayload(token): Promise<string>{
+  private async createPayload(login: HiveLogin): Promise<string>{
     return Object.entries({
       category: (await this.category).id,
       reason: (await this.reason).id,
@@ -91,7 +91,7 @@ export class Report {
       evidence: await this.evidence,
       UUIDs: await this.uuids(),
       notify: true,
-      _token: token
+      _token: await login.reportToken
     })
     // parse array elements to be expanded into multiple
     .reduce((arr, [key, val]) => {

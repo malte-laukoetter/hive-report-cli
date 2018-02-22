@@ -44,6 +44,12 @@ export class HiveLogin {
     return this.loadUuidAndCookieKey().then(_ => this._cookiekey);
   }
 
+  logout() {
+    this._uuid = null;
+    this._cookiekey = null;
+    this._loginLink = null; 
+  }
+
   private isLoading: boolean = false;
   private loadingPromise: Promise<void> = null
   loadUuidAndCookieKey(): Promise<void> {
@@ -91,9 +97,7 @@ export class HiveLogin {
 
     return fetch(url, mergedInit).then(async res => {
       if (HIVE_LOGIN_REDIRECT_REGEX.test(res.url)){
-        this._uuid = null;
-        this._cookiekey = null;
-        this._loginLink = null;
+        this.logout();
 
         if(fetchTry > 2){
           return Promise.reject(new Error("Login to Hive failed too many times..."))

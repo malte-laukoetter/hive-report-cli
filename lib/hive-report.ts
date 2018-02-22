@@ -21,7 +21,7 @@ const readdir = promisify(readDirRecursiceCallback);
 const fileStat = promisify(fs.stat)
 
 const HIVE_GAMELOG_URL_REGEX = /.*hivemc\.com\/\w*\/game\/\d*/;
-const HIVE_GAMELOG_CHAT_PLAYER_REGEX = /(?<=class="chat">(\s|\\n)<p><em>)[A-Za-z0-9_]{3,16}/g;
+const HIVE_PLAYER_LINK_REGEX = /(?<=avatar\/)[A-Za-z0-9_]{3,16}(?=\/42)/g; // matches the names used in the links for the avatars in the box of all players
 const HIVE_CHATREPORT_PLAYER_REGEX = /(?<=Chat log of <a href="\/player\/)[a-zA-Z0-9_]{3,16}/
 const HIVE_CHATREPORT_ID_REGEX = /(?<=http:\/\/chatlog\.hivemc\.com\/\?logId=)[a-f0-9]*/
 
@@ -235,7 +235,30 @@ questionRegistry.set(Questions.COMMENT, {
 if (commander.args[0]) {
   const url = commander.args[0];
 
-  if (/(chat|log)/.test(url)) {
+  if(/partylog/.test(url)){
+    answers.report.evidence = url;
+    answers.report.category = Categories.get('chat');
+
+    const login = new HiveLogin();
+
+    login.fetch(url)
+      .then(res => res.text())
+      .then(res => {
+        // our general login detection doesn't work here so we need to do it by hand
+        if (/You aren't signed in/.test(res)){
+          login.logout();
+
+          return this.fetch(url).then(res => res.text());
+        }
+
+        return res;
+      }).then((res: string) => {
+        [... new Set(res.match(HIVE_PLAYER_LINK_REGEX))].map(a => answers.report.addPlayer(a));
+        return;
+      })
+      .then(_ => nextQuestion(Questions.PLAYERS_LIST));
+
+  } else if (/(chat|log)/.test(url)) {
     // Chat Log
     answers.report.evidence = url;
     answers.report.category = Categories.get('chat');
@@ -254,7 +277,7 @@ if (commander.args[0]) {
     answers.report.category = Categories.get('chat');
 
     fetch(url).then(res => res.text()).then(res => {
-      [... new Set(res.match(HIVE_GAMELOG_CHAT_PLAYER_REGEX))].map(a => answers.report.addPlayer(a));
+      [... new Set(res.match(HIVE_PLAYER_LINK_REGEX))].map(a => answers.report.addPlayer(a));
       return;
     })
       .then(_ => nextQuestion(Questions.PLAYERS_LIST));

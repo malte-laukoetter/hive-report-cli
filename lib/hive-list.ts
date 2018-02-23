@@ -17,6 +17,10 @@ const HIVE_REPORT_LIST_REGEX = /([a-zA-Z0-9_ ,]*)<\/td>\n<td>([a-zA-t ()]{0,20})
 
 commander
   .description('lists the status of the latest 10 reports')
+  .on('--help', _ => console.log(`
+  
+  Gets the latest 10 reports and there status and displays this infos as a table, may also request a login link as above. (showes the same information as https://report.hivemc.com/submitted)`
+  ))
   .parse(process.argv);
 
 async function main() {

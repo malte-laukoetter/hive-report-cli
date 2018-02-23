@@ -17,6 +17,10 @@ const conf = new Configstore(module.exports.name);
 
 commander
   .description('infos about a choosen report')
+  .on('--help', _ => console.log(`
+  
+  Provides a list of all known reports (can be updatet by running 'hive list') and allowes to select one of those and then fetches the available informations about the report. (showes the same information as report.hivemc.com/view/CHATREPORTID)`
+  ))
   .parse(process.argv);
 
 inquirer.prompt({

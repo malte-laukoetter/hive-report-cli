@@ -55,6 +55,14 @@ async function saveStats(report: Report) {
 
 commander
   .description('creates a report')
+  .on('--help', _ => console.log(`
+  
+  Creates a new report and optionaly fetches all available information from a given log.
+  If it is a hacking report it also allowes to select a video that then will be automaticly uploaded to youtube and then be added to the report
+  (needs a youtube account and will prompt for authentification on the first use).
+  After that it prompts for all other informations.
+  (The command expects the same information as https://report.hivemc.com and provides simmilar testing of the inputs)`
+  ))
   .parse(process.argv);
 
 const questionRegistry: Map<Questions, any> = new Map();

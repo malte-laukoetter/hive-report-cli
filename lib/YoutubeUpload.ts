@@ -17,6 +17,7 @@ export function uploadFile(filePath, afterAuthCallback) {
   return readFile(path.join(__dirname, '..', 'client_secret.json')).then(async content => {
     const auth = await authorize(JSON.parse(content.toString()));
 
+    // we need this callback as we want to continue with the next question before the upload is finished
     afterAuthCallback();
 
     return videosInsert(auth, filePath);
@@ -87,11 +88,5 @@ function videosInsert(auth, videoFileName) {
       body: fs.createReadStream(videoFileName).pipe(new Throttle({ rate: conf.get('max_upload_speed') }) as any)
     },
     part: "id,snippet,status"
-  }).then(data => {
-    return data.data;
-  }).catch(err => {
-    console.log("if the error is maxBodyLength -> edit node_modules/follow-redirects/index.js line 226 to something bigger")
-
-    return err;
-  });
+  }).then(data => data.data);
 }

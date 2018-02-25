@@ -20,11 +20,13 @@ import * as pkginfo from 'pkginfo';
 const readdir = promisify(readDirRecursiceCallback);
 const fileStat = promisify(fs.stat)
 
-const HIVE_GAMELOG_URL_REGEX = /.*hivemc\.com\/\w*\/game\/\d*/;
+const HIVE_GAMELOG_URL_REGEX = /.*hivemc\.com\/[\w-]*\/game\/\d*/;
 const HIVE_PLAYER_LINK_REGEX = /(?<=avatar\/)[A-Za-z0-9_]{3,16}(?=\/42)/g; // matches the names used in the links for the avatars in the box of all players
 const HIVE_CHATREPORT_PLAYER_REGEX = /(?<=Chat log of <a href="\/player\/)[a-zA-Z0-9_]{3,16}/
 const HIVE_CHATREPORT_ID_REGEX = /(?<=http:\/\/chatlog\.hivemc\.com\/\?logId=)[a-f0-9]*/
-
+const HIVE_CHATREPORT_NOT_LOADED_REGEX = /gamedatanotfound/
+const HIVE_CHATREPORT_UUID_FROM_LINK_REGEX = /(?<=\/)[a-f0-9]{32}$/
+http://hivemc.com/chat/log/2521816319/98a75ecf5dc6403ca1634141a447ec98
 pkginfo(module, 'name');
 const conf = new Configstore(module.exports.name);
 
@@ -132,13 +134,13 @@ prompt.ui.process.subscribe(
 
     const login = new HiveLogin()
 
-    answers.report.submit(login).then(res => {
+    answers.report.submit(login).then(async res => {
       if (res.status === 200) {
         console.log("Report submitted successfully");
         process.exit();
       } else {
         console.log(`Submission failed: (${res.status}) ${res.statusText}`);
-        console.error(res.text())
+        console.error(await res.text())
         process.exit();
       }
     }).catch(err => {
@@ -271,14 +273,24 @@ if (commander.args[0]) {
     answers.report.evidence = url;
     answers.report.category = Categories.get('chat');
 
-    fetch(url).then(res => res.text()).then(res =>
-      answers.report.addPlayer(res.match(HIVE_CHATREPORT_PLAYER_REGEX)[0])
-    ).catch(err => {
+    fetch(url).then(res => res.text()).then(async res => {
+      let player = "";
+
+      if (HIVE_CHATREPORT_NOT_LOADED_REGEX.test(res)) {
+        player = url.match(HIVE_CHATREPORT_UUID_FROM_LINK_REGEX)[0]
+        console.log(`Chatreport not yet available, Player: ${await new Player(player).info().then(i => i.name)}`);   
+      } else {
+        player = res.match(HIVE_CHATREPORT_PLAYER_REGEX)[0]
+        console.log(`Chatreport loaded, Player: ${player}`);   
+      }
+      
+      answers.report.addPlayer(player);
+
+      nextQuestion(Questions.CATEGORY);
+    }).catch(err => {
       console.error("\nError parsing ChatLog:\n", err);
       process.exit()
     });
-
-    nextQuestion(Questions.CATEGORY);
   } else if (HIVE_GAMELOG_URL_REGEX.test(url)) {
     // Game log
     answers.report.evidence = url;

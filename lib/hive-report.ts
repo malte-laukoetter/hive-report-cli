@@ -26,7 +26,6 @@ const HIVE_CHATREPORT_PLAYER_REGEX = /(?<=Chat log of <a href="\/player\/)[a-zA-
 const HIVE_CHATREPORT_ID_REGEX = /(?<=http:\/\/chatlog\.hivemc\.com\/\?logId=)[a-f0-9]*/
 const HIVE_CHATREPORT_NOT_LOADED_REGEX = /gamedatanotfound/
 const HIVE_CHATREPORT_UUID_FROM_LINK_REGEX = /(?<=\/)[a-f0-9]{32}$/
-http://hivemc.com/chat/log/2521816319/98a75ecf5dc6403ca1634141a447ec98
 pkginfo(module, 'name');
 const conf = new Configstore(module.exports.name);
 

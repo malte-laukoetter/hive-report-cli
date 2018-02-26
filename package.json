@@ -1,6 +1,6 @@
 {
   "name": "hive-report-cli",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "A cli to create and view reports on https://report.hivemc.com",
   "keywords": [
     "cli",

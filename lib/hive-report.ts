@@ -296,10 +296,22 @@ if (commander.args[0]) {
     answers.report.category = Categories.get('chat');
 
     fetch(url).then(res => res.text()).then(res => {
-      [... new Set(res.match(HIVE_PLAYER_LINK_REGEX))].map(a => answers.report.addPlayer(a));
+      let player = "";
+
+      if (HIVE_CHATREPORT_NOT_LOADED_REGEX.test(res)) {
+        console.log(`Gamelog not yet available!`);
+
+        nextQuestion(Questions.PLAYERS);
+      } else {
+        [... new Set(res.match(HIVE_PLAYER_LINK_REGEX))].map(a => answers.report.addPlayer(a));
+
+        console.log(`Gamelog loaded!`);
+
+        nextQuestion(Questions.PLAYERS_LIST)
+      }
       return;
     })
-      .then(_ => nextQuestion(Questions.PLAYERS_LIST));
+    .then(_ => nextQuestion(Questions.PLAYERS_LIST));
   } else {
     console.log("Thats not a link I know what to do with...");
     answers.report.evidence = url;

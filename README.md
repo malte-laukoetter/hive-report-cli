@@ -20,7 +20,9 @@ Gets the latest 10 reports and there status and displays this infos as a table, 
 
 ![gif of the hive info command](https://github.com/Lergin/hive-report-cli/raw/master/images/hive-info.gif)
 
-Provides a list of all known reports (can be updatet by running `hive list`) and allowes to select one of those and then fetches the available informations about the report. (showes the same information as report.hivemc.com/view/CHATREPORTID)
+Provides a list of all known reports (can be updatet by running with the flag `--update` or `-u`) and allowes to select one of those and then fetches the available informations about the report. (showes the same information as report.hivemc.com/view/CHATREPORTID)
+
+The selection can also show the report ids when run with the flag `--ids`.
 
 ## `hive settings`
 

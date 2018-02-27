@@ -136,4 +136,8 @@ export class SubmittedReport {
         return;
       });
   }
+
+  toSingleLineString(){
+    return `${this.submissionDate.toISOString().substr(0, 19).replace('T', ' ')} - ${this.status.padEnd(13)} (${this.reason}: ${[...this.players].map(pl => pl.name).join(', ')})`;
+  }
 }

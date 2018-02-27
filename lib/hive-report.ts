@@ -41,7 +41,7 @@ enum Questions {
 };
 
 async function saveStats(report: Report) {
-  const reports = conf.has('reports') ? conf.get('reports') : [];
+  const reports = conf.has('reports_submitted') ? conf.get('reports_submitted') : [];
 
   reports.push({
     players: await report.uuids(),
@@ -51,7 +51,7 @@ async function saveStats(report: Report) {
     comment: await report.comment
   });
 
-  conf.set('reports', reports);
+  conf.set('reports_submitted', reports);
 }
 
 commander

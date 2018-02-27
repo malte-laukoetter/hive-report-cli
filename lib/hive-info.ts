@@ -5,6 +5,7 @@ import { Html5Entities as Entities} from 'html-entities';
 import * as pkginfo from 'pkginfo';
 import { SubmittedReport } from "./SubmittedReport";
 import { HiveLogin } from "./HiveLogin";
+import { reportList, saveSubmittedReportsToConfig, loadSubmittedReportsFromConfig } from './ReportList';
 
 /*
  * The filename is important for commander!
@@ -17,9 +18,11 @@ const conf = new Configstore(module.exports.name);
 
 commander
   .description('infos about a choosen report')
+  .option('-u, --update', 'update the list of reports from the report site')
+  .option('--ids', 'show the report ids instead of the infos in the selection')
   .on('--help', _ => console.log(`
   
-  Provides a list of all known reports (can be updatet by running 'hive list') and allowes to select one of those and then fetches the available informations about the report. (showes the same information as report.hivemc.com/view/CHATREPORTID)`
+  Provides a list of all known reports (can be updatet by running with the flag '--update') and allowes to select one of those and then fetches the available informations about the report. (showes the same information as report.hivemc.com/view/CHATREPORTID)`
   ))
   .parse(process.argv);
 
@@ -27,16 +30,41 @@ inquirer.prompt({
   type: 'list',
   name: 'report',
   message: 'Report:',
-  choices: _ => (conf.get('report_ids') as string[]).sort().reverse().map(id => new SubmittedReport(id)).map(report => { 
-    return {
-      value: report,
-      name: `${report.submissionDate.toISOString().substr(0, 19).replace('T', ' ')} (${report.id})`,
-      short: `${report.submissionDate.toISOString().substr(0, 19).replace('T', ' ')} (${report.id})`
+  choices: async _ => {
+    if(commander.update){
+      const login = new HiveLogin();
+
+      console.log("Updateing Report List...")
+
+      const reports = await reportList(login);
+
+      saveSubmittedReportsToConfig(reports, conf);
     }
-  }) as any
-})
+    
+    if(commander.ids){
+      const reports = (conf.get('report_ids') || []).map(id => new SubmittedReport(id));
+
+      return reports.map(report => {
+        return {
+          value: report,
+          name: report.id,
+          short: report.id
+        }
+      });
+    }else{
+      const reports = loadSubmittedReportsFromConfig(conf)
+
+      return reports.map(report => {
+        return {
+          value: report,
+          name: report.toSingleLineString(),
+          short: report.toSingleLineString()
+        }
+      });
+    }
+  }
+} as any)
 .then(async ans => {
-  
   const report: SubmittedReport = ans.report;
   const login = new HiveLogin();
   await report.load(login);

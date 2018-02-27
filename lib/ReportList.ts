@@ -46,9 +46,9 @@ export function loadSubmittedReportsFromConfig(conf: Configstore): SubmittedRepo
   return Object.entries(conf.has('report_infos') ? conf.get('report_infos') : {}).map(([id, data]) => {
     const report = new SubmittedReport(id);
 
-    report.players = data.players.map(p => new Player(p));
-    report.reason = data.reason;
-    report.status = data.status;
+    report.players = (data as any).players.map(p => new Player(p));
+    report.reason = (data as any).reason;
+    report.status = (data as any).status;
 
     return report;
   });

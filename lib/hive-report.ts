@@ -311,7 +311,6 @@ if (commander.args[0]) {
       }
       return;
     })
-    .then(_ => nextQuestion(Questions.PLAYERS_LIST));
   } else {
     console.log("Thats not a link I know what to do with...");
     answers.report.evidence = url;

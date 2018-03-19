@@ -16,11 +16,23 @@ const conf = new Configstore(module.exports.name);
 export function uploadFile(filePath, afterAuthCallback) {
   return readFile(path.join(__dirname, '..', 'client_secret.json')).then(async content => {
     const auth = await authorize(JSON.parse(content.toString()));
-
+    
     // we need this callback as we want to continue with the next question before the upload is finished
     afterAuthCallback();
 
-    return videosInsert(auth, filePath);
+    return videosInsert(auth, filePath).catch(err => {
+      if (err.message === "unauthorized_client") {
+        console.log();
+        console.log(`Youtube auth is no longer valid!`)
+        console.log(`Please start the programm again, if the error continues to happen please contact Lergin!`)
+
+        conf.delete("oauth_google");
+
+        process.exit();
+      }
+
+      throw err;
+    });
   });
 }
 
@@ -69,7 +81,7 @@ function getNewToken(oauth2Client) {
 }
 
 function videosInsert(auth, videoFileName) {
-  const service = google.youtube({ version: 'v3', auth: auth });
+  const service = google.youtube({ version: 'v3', auth: auth, maxContentLength: 1024 * 1024 * 1024 });
 
   return promisify(service.videos.insert)({
     notifySubscribers: false,

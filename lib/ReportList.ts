@@ -4,7 +4,7 @@ import { SubmittedReport } from "./SubmittedReport";
 import * as Configstore from 'configstore';
 
 const HIVE_REPORT_LIST_REPORTIDS_REGEX = /(?<=href=\"\/view\/)[a-f0-9]{24}/g;
-const HIVE_REPORT_LIST_REGEX = /([a-zA-Z0-9_ ,]*)<\/td>\n<td>([a-zA-t ()]{0,20})<\/td>\n<td>([a-zA-t]{0,20})<\/td>\n<td><a href="\/view\/([a-f0-9]{24})/g
+const HIVE_REPORT_LIST_REGEX = /([a-zA-Z0-9_ ,]*)<\/td>\n<td>([a-zA-t ()\/]{0,25})<\/td>\n<td>([a-zA-t]{0,20})<\/td>\n<td><a href="\/view\/([a-f0-9]{24})/g
 
 export async function reportList(login: HiveLogin): Promise<SubmittedReport[]>{
   const res = await login.fetch('https://report.hivemc.com/submitted').then(res => res.text());

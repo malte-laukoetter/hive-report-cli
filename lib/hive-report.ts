@@ -1,6 +1,6 @@
 import * as inquirer from 'inquirer';
 import { default as fetch } from 'node-fetch';
-import { Player } from 'hive-api';
+import { Player, GameTypes } from 'hive-api';
 import { promisify, inspect } from 'util'
 import * as Configstore from 'configstore';
 import * as Rx from 'rxjs/Rx';
@@ -28,6 +28,8 @@ const HIVE_CHATREPORT_NOT_LOADED_REGEX = /gamedatanotfound/
 const HIVE_CHATREPORT_UUID_FROM_LINK_REGEX = /(?<=\/)[a-f0-9]{32}$/
 pkginfo(module, 'name');
 const conf = new Configstore(module.exports.name);
+
+GameTypes.update()
 
 enum Questions {
   LOGIN = 'login',

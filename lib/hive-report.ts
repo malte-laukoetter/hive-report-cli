@@ -98,8 +98,16 @@ prompt.ui.process.subscribe(
         break;
       case Questions.REASON:
         answers.report.reason = ans.answer;
-        if ((await answers.report.category).id === 'hacking' && conf.has('video_dir')) {
-          nextQuestion(Questions.EVIDENCE_VIDEO);
+        if(conf.has('video_dir')) {
+          const VIDEO_REASONS = ['premabuse', 'glitch', 'team', 'rdm', 'ghost', 'shardtrolling', 'harass', 'teamkill', 'karma']
+
+          const { id } = await answers.report.category
+          const { id: reasonId } = await answers.report.reason
+
+          if (id === 'hacking' || VIDEO_REASONS.some(reason => reason === reasonId)) {
+            nextQuestion(Questions.EVIDENCE_VIDEO);
+
+          }
         } else {
           nextQuestion(Questions.EVIDENCE);
         }

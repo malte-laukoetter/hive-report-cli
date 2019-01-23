@@ -106,11 +106,11 @@ prompt.ui.process.subscribe(
 
           if (id === 'hacking' || VIDEO_REASONS.some(reason => reason === reasonId)) {
             nextQuestion(Questions.EVIDENCE_VIDEO);
-
+            break;
           }
-        } else {
-          nextQuestion(Questions.EVIDENCE);
         }
+        
+        nextQuestion(Questions.EVIDENCE);
         break;
       case Questions.EVIDENCE_VIDEO:
         if (ans.answer === 'write your own') {

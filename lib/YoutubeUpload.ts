@@ -81,7 +81,7 @@ function getNewToken(oauth2Client) {
 }
 
 function videosInsert(auth, videoFileName) {
-  const service = google.youtube({ version: 'v3', auth: auth, maxContentLength: 1024 * 1024 * 1024 });
+  const service = google.youtube({ version: 'v3', auth: auth });
 
   return promisify(service.videos.insert)({
     notifySubscribers: false,

@@ -81,24 +81,22 @@ function getNewToken(oauth2Client) {
 }
 
 function videosInsert(auth, videoFileName) {
-  const service = google.youtube({ version: 'v3', auth: auth });
+  const service = google.youtube({ version: 'v3', auth: auth, maxContentLength: 500 * 1024 * 1024 * 1024 });
 
-  return promisify(service.videos.insert)({
+  return service.videos.insert({
     notifySubscribers: false,
-    resource: {
-      name: videoFileName,
-      mimeType: 'video/*',
-      snippet: {
-        title: videoFileName.split(/(\/|\\)/g).reduce((_, a) => a, "").split('.')[0],
-      },
-      status: {
-        privacyStatus: 'unlisted'
-      }
-    },
     media: {
       mimeType: 'video/*',
       body: fs.createReadStream(videoFileName).pipe(new Throttle({ rate: conf.get('max_upload_speed') }) as any)
     },
-    part: "id,snippet,status"
+    part: 'id,snippet,status',
+    requestBody: {
+      status: {
+        privacyStatus: 'unlisted'
+      },
+      snippet: {
+        title: videoFileName.split(/(\/|\\)/g).reduce((_, a) => a, "").split('.')[0]
+      }
+    }
   }).then(data => data.data);
 }

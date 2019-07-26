@@ -42,9 +42,9 @@ inquirer.prompt({
     }
     
     if(commander.ids){
-      const reports = (conf.get('report_ids') || []).map(id => new SubmittedReport(id));
+      const reports: SubmittedReport[] = (conf.get('report_ids') || []).map(id => new SubmittedReport(id));
 
-      return reports.map(report => {
+      return reports.sort((a, b) => b.submissionDate.getTime() - a.submissionDate.getTime()).map(report => {
         return {
           value: report,
           name: report.id,
@@ -54,7 +54,7 @@ inquirer.prompt({
     }else{
       const reports = loadSubmittedReportsFromConfig(conf)
 
-      return reports.map(report => {
+      return reports.sort((a, b) => b.submissionDate.getTime() - a.submissionDate.getTime()).map(report => {
         return {
           value: report,
           name: report.toSingleLineString(),
